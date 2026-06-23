@@ -10,8 +10,7 @@ export default {
     }
 
     // ============================================
-    // قاعدة بيانات الزبائن
-    // باش تزيد زبون جديد — زيد سطر فقط هنا
+    // قاعدة بيانات الزبائن — زيد زبون جديد هنا فقط
     // ============================================
     const clients = {
       "AXI-0001": { name: "YOUSSEF",   accountId: "12009540"   },
@@ -23,7 +22,6 @@ export default {
     const url = new URL(request.url);
     const clientId = url.searchParams.get('clientId');
 
-    // إلا ما جاش clientId — رجع الداشبورد HTML
     if (!clientId) {
       return new Response(getDashboardHTML(), {
         headers: { 'Content-Type': 'text/html;charset=UTF-8' }
@@ -32,6 +30,24 @@ export default {
 
     if (!clients[clientId]) {
       return new Response(JSON.stringify({ error: 'Client not found' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ⚠️ TEMP TESTING SWITCH — ONLY for AXI-0002 (design/animation QA)
+    // Remove this block once MyFXBook account IDs are verified and live data works.
+    if (clientId === 'AXI-0002') {
+      const mockAccount = {
+        id: clients[clientId].accountId,
+        name: clients[clientId].name,
+        balance: 5430.25,
+        equity: 5430.25,
+        drawdown: 1.2,
+        dailyDrawdown: 0.4,
+        tradingDays: 6,
+        _mock: true // flag — dashboard shows a visible TEST MODE badge when this is true
+      };
+      return new Response(JSON.stringify(mockAccount), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -110,6 +126,8 @@ input::placeholder{color:#333;text-transform:none}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:4px;color:white}
 .logo span{color:var(--gold)}
 .badge{background:var(--gold-glow);border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:11px;padding:6px 14px;letter-spacing:2px}
+.test-badge{background:rgba(245,197,24,0.18);border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;padding:6px 14px;letter-spacing:3px;animation:blink 1.4s infinite;display:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .main{padding:24px;max-width:1200px;margin:0 auto}
@@ -160,6 +178,7 @@ input::placeholder{color:#333;text-transform:none}
 .ft{font-size:10px;letter-spacing:2px;color:var(--muted)}
 .logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 16px;font-size:10px;letter-spacing:2px;cursor:pointer;margin-top:12px}
 .logout:hover{border-color:var(--red);color:var(--red)}
+.test-strip{display:none;background:repeating-linear-gradient(45deg,rgba(245,197,24,0.15),rgba(245,197,24,0.15) 10px,rgba(245,197,24,0.05) 10px,rgba(245,197,24,0.05) 20px);border:1px solid var(--gold);color:var(--gold);text-align:center;padding:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;margin-bottom:16px}
 </style>
 </head>
 <body>
@@ -180,11 +199,13 @@ input::placeholder{color:#333;text-transform:none}
   <div class="topbar">
     <div class="logo">AXI <span>PROP</span> FIRM</div>
     <div style="display:flex;align-items:center;gap:16px">
+      <div class="test-badge" id="testBadge">⚠ TEST MODE — MOCK DATA</div>
       <div class="badge" id="phaseBadge">PHASE 1</div>
       <div class="dot"></div>
     </div>
   </div>
   <div class="main">
+    <div class="test-strip" id="testStrip">⚠ THIS ACCOUNT IS RUNNING ON MOCK / TEST DATA — NOT LIVE MARKET DATA ⚠</div>
     <div class="info-bar">
       <div><div class="tname" id="tname">—</div><div class="tid" id="tid">—</div></div>
       <div style="text-align:right"><div style="font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase">Balance</div><div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--gold);letter-spacing:2px" id="balTop">—</div></div>
@@ -242,6 +263,10 @@ async function handleLogin() {
   finally { setLoad(false); }
 }
 function render(t, a, code) {
+  const isMock = a._mock === true;
+  document.getElementById('testBadge').style.display = isMock ? 'inline-block' : 'none';
+  document.getElementById('testStrip').style.display = isMock ? 'block' : 'none';
+
   const bal = parseFloat(a.balance) || t.startBalance;
   const dd = parseFloat(a.drawdown) || 0;
   const ddd = parseFloat(a.dailyDrawdown) || 0;
@@ -251,7 +276,7 @@ function render(t, a, code) {
   const target = t.phase === 1 ? 10 : 5;
   document.getElementById('phaseBadge').textContent = 'PHASE ' + t.phase;
   document.getElementById('tname').textContent = a.name || t.name;
-  document.getElementById('tid').textContent = 'Code: ' + code + ' | ID: ' + a.id;
+  document.getElementById('tid').textContent = 'Code: ' + code + ' | ID: ' + a.id + (isMock ? ' | MOCK' : '');
   document.getElementById('balTop').textContent = '\$' + bal.toLocaleString();
   document.getElementById('balance').textContent = '\$' + bal.toLocaleString();
   document.getElementById('balSub').textContent = 'Start: \$' + t.startBalance.toLocaleString();
@@ -302,5 +327,5 @@ function logout(){document.getElementById('dashboard').style.display='none';docu
 document.getElementById('codeInput').addEventListener('keydown',e=>{if(e.key==='Enter')handleLogin();});
 </script>
 </body>
-</html>\`;
+</html>`;
 }
