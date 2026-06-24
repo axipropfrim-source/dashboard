@@ -1,6 +1,304 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXI PROP FIRM — Trader Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--gold:#F5C518;--gold-glow:rgba(245,197,24,0.15);--bg:#080808;--bg2:#111111;--bg3:#181818;--border:rgba(245,197,24,0.15);--green:#00E676;--red:#FF3D57;--text:#E8E8E8;--muted:#666}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+
+  #loginScreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100}
+  .login-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(245,197,24,0.08) 0%,transparent 60%);pointer-events:none}
+  .login-box{position:relative;width:100%;max-width:420px;padding:48px 40px;border:1px solid var(--border);background:var(--bg2)}
+  .login-logo{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:6px;color:var(--gold);margin-bottom:8px;display:block}
+  .login-title{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:3px;color:white;line-height:1;margin-bottom:8px}
+  .login-sub{font-size:12px;color:var(--muted);margin-bottom:40px;letter-spacing:1px}
+  label{font-size:10px;letter-spacing:3px;color:var(--muted);display:block;margin-bottom:8px;text-transform:uppercase}
+  input{width:100%;background:var(--bg3);border:1px solid var(--border);color:white;padding:14px 16px;font-family:'Space Mono',monospace;font-size:14px;outline:none;letter-spacing:2px;margin-bottom:16px;text-transform:uppercase}
+  input:focus{border-color:var(--gold)}
+  input::placeholder{color:#333;text-transform:none}
+  .btn{width:100%;background:var(--gold);color:#000;border:none;padding:16px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:4px;cursor:pointer;transition:all 0.2s}
+  .btn:hover{background:#fff}
+  .btn:disabled{background:#333;color:#666;cursor:not-allowed}
+  .err{color:var(--red);font-size:11px;margin-top:12px;text-align:center;display:none}
+  .loading{color:var(--gold);font-size:11px;margin-top:12px;text-align:center;display:none}
+
+  #dashboard{display:none}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:10}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:4px;color:white}
+  .logo span{color:var(--gold)}
+  .badge{background:var(--gold-glow);border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:11px;padding:6px 14px;letter-spacing:2px}
+  .test-badge{background:rgba(245,197,24,0.18);border:1px solid var(--gold);color:var(--gold);font-family:'Space Mono',monospace;font-size:10px;padding:6px 14px;letter-spacing:3px;animation:blink 1.4s infinite;display:none}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .main{padding:24px;max-width:1200px;margin:0 auto}
+  .info-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:20px 24px;background:var(--bg2);border:1px solid var(--border)}
+  .tname{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:white}
+  .tid{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);margin-top:4px}
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  @media(max-width:768px){.metrics{grid-template-columns:repeat(2,1fr)}.bgrid{grid-template-columns:1fr !important}}
+  .card{background:var(--bg2);border:1px solid var(--border);padding:20px;position:relative;overflow:hidden}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform 0.4s}
+  .card:hover::before{transform:scaleX(1)}
+  .clabel{font-size:9px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+  .cval{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:white;line-height:1}
+  .cval.pos{color:var(--green)}.cval.neg{color:var(--red)}.cval.warn{color:var(--gold)}
+  .csub{font-size:11px;color:var(--muted);margin-top:6px;font-family:'Space Mono',monospace}
+  .section{background:var(--bg2);border:1px solid var(--border);padding:24px;margin-bottom:24px}
+  .stitle{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:4px;color:var(--gold);margin-bottom:20px;display:flex;align-items:center;gap:10px}
+  .stitle::after{content:'';flex:1;height:1px;background:var(--border)}
+  .pitem{margin-bottom:20px}
+  .ph{display:flex;justify-content:space-between;margin-bottom:8px}
+  .pn{font-size:11px;letter-spacing:2px;color:var(--text);text-transform:uppercase}
+  .pv{font-family:'Space Mono',monospace;font-size:12px;color:var(--gold)}
+  .ptrack{height:6px;background:rgba(255,255,255,0.05);overflow:hidden}
+  .pfill{height:100%;background:linear-gradient(90deg,var(--gold),#fff8b0);transition:width 1s}
+  .pfill.d{background:linear-gradient(90deg,var(--red),#ff8a80)}
+  .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  .cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:4px}
+  .ch{font-size:9px;color:var(--muted);text-align:center;padding:4px 0;text-transform:uppercase}
+  .cd{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-family:'Space Mono',monospace}
+  .cd.e{opacity:0}.cd.we{background:rgba(255,255,255,0.02);color:var(--muted)}.cd.nt{background:rgba(255,255,255,0.03);color:#444}
+  .cd.win{background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.3);color:var(--green)}
+  .cd.loss{background:rgba(255,61,87,0.12);border:1px solid rgba(255,61,87,0.3);color:var(--red)}
+  .dn{font-size:10px;font-weight:700}.dp{font-size:7px;margin-top:1px}
+  .ri{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .ri:last-child{border-bottom:none}
+  .ric{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .ric.pass{background:var(--green);box-shadow:0 0 6px var(--green)}.ric.fail{background:var(--red);box-shadow:0 0 6px var(--red)}.ric.warn{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+  .rt{flex:1}.rn{font-size:11px;letter-spacing:1px}.rd{font-size:10px;color:var(--muted);margin-top:2px;font-family:'Space Mono',monospace}
+  .rs{font-family:'Space Mono',monospace;font-size:10px;padding:4px 10px}
+  .rs.pass{background:rgba(0,230,118,0.1);color:var(--green);border:1px solid rgba(0,230,118,0.2)}
+  .rs.fail{background:rgba(255,61,87,0.1);color:var(--red);border:1px solid rgba(255,61,87,0.2)}
+  .rs.warn{background:rgba(245,197,24,0.1);color:var(--gold);border:1px solid rgba(245,197,24,0.2)}
+  .days{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+  .dd{width:24px;height:24px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:8px;font-family:'Space Mono',monospace}
+  .dd.done{background:rgba(0,230,118,0.2);color:var(--green);border:1px solid rgba(0,230,118,0.3)}
+  .dd.pend{background:rgba(255,255,255,0.03);color:#333;border:1px solid rgba(255,255,255,0.05)}
+  .footer{text-align:center;padding:20px;border-top:1px solid var(--border);margin-top:24px}
+  .ft{font-size:10px;letter-spacing:2px;color:var(--muted)}
+  .logout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 16px;font-size:10px;letter-spacing:2px;cursor:pointer;margin-top:12px}
+  .logout:hover{border-color:var(--red);color:var(--red)}
+  .test-strip{display:none;background:repeating-linear-gradient(45deg,rgba(245,197,24,0.15),rgba(245,197,24,0.15) 10px,rgba(245,197,24,0.05) 10px,rgba(245,197,24,0.05) 20px);border:1px solid var(--gold);color:var(--gold);text-align:center;padding:10px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;margin-bottom:16px}
+</style>
+</head>
 <body>
-    <h1>Axi Prop Firm - الموقع خدام!</h1>
+
+<div id="loginScreen">
+  <div class="login-bg"></div>
+  <div class="login-box">
+    <span class="login-logo">AXI PROP FIRM</span>
+    <div class="login-title">TRADER<br>DASHBOARD</div>
+    <div class="login-sub">ENTER YOUR ACCESS CODE</div>
+    <label>Access Code</label>
+    <input type="text" id="codeInput" placeholder="AXI-0001" autocomplete="off">
+    <button class="btn" id="loginBtn" onclick="handleLogin()">ACCESS DASHBOARD →</button>
+    <div class="loading" id="loginLoading">⏳ LOADING YOUR DATA...</div>
+    <div class="err" id="loginError">⚠ INVALID CODE — CONTACT SUPPORT</div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="topbar">
+    <div class="logo">AXI <span>PROP</span> FIRM</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="test-badge" id="testBadge">⚠ TEST MODE — MOCK DATA</div>
+      <div class="badge" id="phaseBadge">PHASE 1</div>
+      <div class="dot"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="test-strip" id="testStrip">⚠ THIS ACCOUNT IS RUNNING ON MOCK / TEST DATA — NOT LIVE MARKET DATA ⚠</div>
+    <div class="info-bar">
+      <div><div class="tname" id="tname">—</div><div class="tid" id="tid">—</div></div>
+      <div style="text-align:right"><div style="font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase">Balance</div><div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--gold);letter-spacing:2px" id="balTop">—</div></div>
+    </div>
+    <div class="metrics">
+      <div class="card"><div class="clabel">Balance</div><div class="cval" id="balance">—</div><div class="csub" id="balSub">—</div></div>
+      <div class="card"><div class="clabel">Profit / Loss</div><div class="cval" id="pnl">—</div><div class="csub" id="pnlPct">—</div></div>
+      <div class="card"><div class="clabel">Daily Drawdown</div><div class="cval warn" id="ddd">—</div><div class="csub">Limit: 3.00%</div></div>
+      <div class="card"><div class="clabel">Overall Drawdown</div><div class="cval warn" id="odd">—</div><div class="csub">Limit: 8.00%</div></div>
+    </div>
+    <div class="section">
+      <div class="stitle">CHALLENGE PROGRESS</div>
+      <div class="pitem"><div class="ph"><span class="pn">Profit Target</span><span class="pv" id="tp">—</span></div><div class="ptrack"><div class="pfill" id="tb" style="width:0%"></div></div></div>
+      <div class="pitem"><div class="ph"><span class="pn">Daily Loss</span><span class="pv" id="dp">—</span></div><div class="ptrack"><div class="pfill d" id="db" style="width:0%"></div></div></div>
+      <div class="pitem"><div class="ph"><span class="pn">Overall Loss</span><span class="pv" id="op">—</span></div><div class="ptrack"><div class="pfill d" id="ob" style="width:0%"></div></div></div>
+      <div class="pitem" style="margin-bottom:0"><div class="ph"><span class="pn">Trading Days</span><span class="pv" id="daysp">—</span></div><div class="days" id="daysC"></div></div>
+    </div>
+    <div class="bgrid">
+      <div class="section"><div class="stitle">TRADING CALENDAR</div><div class="cgrid" id="cal"></div></div>
+      <div class="section">
+        <div class="stitle">RULE COMPLIANCE</div>
+        <div class="ri"><div class="ric pass" id="r1i"></div><div class="rt"><div class="rn">Daily Loss Limit</div><div class="rd" id="r1d">Max 3%</div></div><div class="rs pass" id="r1s">PASS</div></div>
+        <div class="ri"><div class="ric pass" id="r2i"></div><div class="rt"><div class="rn">Overall Drawdown</div><div class="rd" id="r2d">Max 8%</div></div><div class="rs pass" id="r2s">PASS</div></div>
+        <div class="ri"><div class="ric warn" id="r3i"></div><div class="rt"><div class="rn">Profit Target</div><div class="rd" id="r3d">—</div></div><div class="rs warn" id="r3s">IN PROGRESS</div></div>
+        <div class="ri"><div class="ric warn" id="r4i"></div><div class="rt"><div class="rn">Min Trading Days</div><div class="rd" id="r4d">Need 10 days</div></div><div class="rs warn" id="r4s">IN PROGRESS</div></div>
+        <div class="ri" style="border-bottom:none"><div class="ric pass"></div><div class="rt"><div class="rn">Profit Split</div><div class="rd">80% to trader</div></div><div class="rs pass">CONFIRMED</div></div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="ft">AXI PROP FIRM — CASABLANCA, MOROCCO</div>
+      <div class="ft" style="margin-top:6px;color:#333">Demo accounts. Profits are performance-based bonuses.</div>
+      <br><button class="logout" onclick="logout()">LOGOUT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORKER_URL = 'https://axi-data.axipropfrim.workers.dev/';
+
+const TRADERS = {
+  "AXI-0001": { name: "YOUSSEF",  phase: 1, startBalance: 5000 },
+  "AXI-0002": { name: "TEST AXI", phase: 1, startBalance: 5000 },
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const savedCode = localStorage.getItem('axi_client_id');
+  if (savedCode) {
+    document.getElementById('codeInput').value = savedCode;
+    handleLogin();
+  }
+});
+
+async function handleLogin() {
+  const code = document.getElementById('codeInput').value.trim().toUpperCase();
+  if (!code) return;
+
+  const trader = TRADERS[code];
+  if (!trader) { showErr('⚠ INVALID CODE — CONTACT SUPPORT'); return; }
+
+  setLoad(true);
+
+  try {
+    const url = WORKER_URL + '?clientId=' + encodeURIComponent(code);
+    const res = await fetch(url);
+    const acc = await res.json();
+
+    if (acc.error) throw new Error(acc.error);
+
+    localStorage.setItem('axi_client_id', code);
+
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    render(trader, acc, code);
+
+  } catch (e) {
+    showErr('⚠ ERROR: ' + e.message);
+  } finally {
+    setLoad(false);
+  }
+}
+
+function render(t, a, code) {
+  const isMock = a._mock === true;
+  document.getElementById('testBadge').style.display = isMock ? 'inline-block' : 'none';
+  document.getElementById('testStrip').style.display = isMock ? 'block' : 'none';
+
+  const bal = parseFloat(a.balance) || t.startBalance;
+  const dd = parseFloat(a.drawdown) || 0;
+  const ddd = parseFloat(a.dailyDrawdown) || 0;
+  const days = parseInt(a.tradingDays) || 0;
+  const profit = bal - t.startBalance;
+  const pct = (profit / t.startBalance) * 100;
+  const target = t.phase === 1 ? 10 : 5;
+
+  document.getElementById('phaseBadge').textContent = 'PHASE ' + t.phase;
+  document.getElementById('tname').textContent = a.name || t.name;
+  document.getElementById('tid').textContent = 'Code: ' + code + ' | ID: ' + a.id + (isMock ? ' | MOCK' : '');
+  document.getElementById('balTop').textContent = '$' + bal.toLocaleString();
+  document.getElementById('balance').textContent = '$' + bal.toLocaleString();
+  document.getElementById('balSub').textContent = 'Start: $' + t.startBalance.toLocaleString();
+
+  const pe = document.getElementById('pnl');
+  pe.textContent = (profit >= 0 ? '+' : '') + '$' + profit.toFixed(2);
+  pe.className = 'cval ' + (profit >= 0 ? 'pos' : 'neg');
+  document.getElementById('pnlPct').textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+
+  document.getElementById('ddd').textContent = ddd.toFixed(2) + '%';
+  document.getElementById('odd').textContent = dd.toFixed(2) + '%';
+
+  document.getElementById('tp').textContent = pct.toFixed(2) + '% / ' + target + '%';
+  document.getElementById('tb').style.width = Math.min((pct / target) * 100, 100) + '%';
+  document.getElementById('dp').textContent = ddd.toFixed(2) + '% / 3%';
+  document.getElementById('db').style.width = Math.min((ddd / 3) * 100, 100) + '%';
+  document.getElementById('op').textContent = dd.toFixed(2) + '% / 8%';
+  document.getElementById('ob').style.width = Math.min((dd / 8) * 100, 100) + '%';
+  document.getElementById('daysp').textContent = days + ' / 10';
+
+  const dc = document.getElementById('daysC');
+  dc.innerHTML = '';
+  for (let i = 1; i <= 30; i++) {
+    const d = document.createElement('div');
+    d.className = 'dd ' + (i <= days ? 'done' : 'pend');
+    d.textContent = i;
+    dc.appendChild(d);
+  }
+
+  buildCal([]);
+  sr('r1', ddd < 3 ? 'pass' : 'fail', ddd < 3 ? 'PASS' : 'BREACH', ddd.toFixed(2) + '% of 3%');
+  sr('r2', dd < 8 ? 'pass' : 'fail', dd < 8 ? 'PASS' : 'BREACH', dd.toFixed(2) + '% of 8%');
+  sr('r3', pct >= target ? 'pass' : 'warn', pct >= target ? 'ACHIEVED' : 'IN PROGRESS', pct.toFixed(2) + '% of ' + target + '%');
+  sr('r4', days >= 10 ? 'pass' : 'warn', days >= 10 ? 'COMPLETE' : 'IN PROGRESS', days + ' of 10 days');
+}
+
+function buildCal(dg) {
+  const g = document.getElementById('cal');
+  g.innerHTML = '';
+  ['MON','TUE','WED','THU','FRI','SAT','SUN'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'ch'; h.textContent = d; g.appendChild(h);
+  });
+  const m = {};
+  if (Array.isArray(dg)) dg.forEach(x => { m[new Date(x.date).getDate()] = parseFloat(x.value); });
+  const e = document.createElement('div'); e.className = 'cd e'; g.appendChild(e);
+  for (let i = 1; i <= 30; i++) {
+    const dw = i % 7;
+    const div = document.createElement('div');
+    if (dw >= 6) { div.className = 'cd we'; div.innerHTML = '<span class="dn">' + i + '</span>'; }
+    else if (m[i] !== undefined) {
+      const v = m[i];
+      div.className = 'cd ' + (v >= 0 ? 'win' : 'loss');
+      div.innerHTML = '<span class="dn">' + i + '</span><span class="dp">' + (v >= 0 ? '+' : '') + v.toFixed(1) + '%</span>';
+    } else { div.className = 'cd nt'; div.innerHTML = '<span class="dn">' + i + '</span>'; }
+    g.appendChild(div);
+  }
+}
+
+function sr(id, cls, st, dt) {
+  document.getElementById(id + 'i').className = 'ric ' + cls;
+  const s = document.getElementById(id + 's');
+  s.className = 'rs ' + cls;
+  s.textContent = st;
+  document.getElementById(id + 'd').textContent = dt;
+}
+
+function showErr(m) {
+  const el = document.getElementById('loginError');
+  el.textContent = m;
+  el.style.display = 'block';
+}
+
+function setLoad(s) {
+  document.getElementById('loginBtn').disabled = s;
+  document.getElementById('loginLoading').style.display = s ? 'block' : 'none';
+  if (!s) document.getElementById('loginError').style.display = 'none';
+}
+
+function logout() {
+  localStorage.removeItem('axi_client_id');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('codeInput').value = '';
+}
+
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+</script>
 </body>
 </html>
